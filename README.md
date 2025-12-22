@@ -1,4 +1,4 @@
-# Aseprite Builder
+# Aseprite Builder Pro 🎨
 
 An automated, "one-click" batch script designed to fetch, compile, and package the latest version of **Aseprite** from source on Windows. 
 
@@ -14,6 +14,20 @@ This script handles the heavy lifting: environment configuration, dependency man
 * **MSVC Integration:** Automatically locates your Visual Studio installation and initializes the x64 build environment.
 * **Installer Generation:** Integrates with Inno Setup to create a professional installer for easy distribution.
 * **Robust Error Handling:** Uses path sanitization and TLS 1.2 enforcement for reliable downloads.
+
+---
+
+## 📋 Why use this vs. the official scripts?
+
+While Aseprite provides a `build.sh` and `build.cmd` in their repository, they are "build helpers" rather than "automation pipelines." Here is why you might prefer this tool:
+
+| Feature | Official Scripts | Aseprite Builder Pro |
+| :--- | :--- | :--- |
+| **Download Source** | ❌ Manual (requires Git clone) | ✅ Automatic (fetches latest ZIP) |
+| **Download Skia** | ❌ Manual (separate download) | ✅ Automatic (automatic fetch/extract) |
+| **Windows Installer** | ❌ No (binary only) | ✅ Yes (generates .exe via Inno Setup) |
+| **Windows Native** | ⚠️ Limited (needs Bash/Git Bash) | ✅ Yes (Native Batch/CMD) |
+| **Setup Complexity** | High (many manual steps) | Low (one-click configuration) |
 
 ---
 
