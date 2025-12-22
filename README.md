@@ -1,4 +1,4 @@
-# Aseprite Builder Pro 🎨
+# Aseprite Builder
 
 An automated, "one-click" batch script designed to fetch, compile, and package the latest version of **Aseprite** from source on Windows. 
 
