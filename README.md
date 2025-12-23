@@ -39,6 +39,15 @@ Ensure these are installed and added to your **System PATH**:
 4.  **[Inno Setup](https://jrsoftware.org/isdl.php):** (Optional) Required to create the `.exe` installer.
 
 ---
+## ☁️ Cloud Build (GitHub Actions)
+
+Don't want to install Visual Studio or CMake? You can build Aseprite directly on GitHub's servers:
+
+1. **Fork** this repository.
+2. Go to the **Actions** tab in your fork.
+3. Select the **Build Aseprite** workflow.
+4. Click **Run workflow**.
+5. Once finished, download the installer from the **Artifacts** section of the run.
 
 ## 🚀 Usage
 
