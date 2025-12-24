@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write # Required to create the Release and upload files
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -36,18 +36,18 @@ jobs:
           # 1. Download ZIP
           Invoke-WebRequest -Uri ${{ env.DOWNLOAD_URL }} -OutFile "aseprite_src.zip"
           
-          # 2. Extract to temp
-          7z x "aseprite_src.zip" -o"temp_extraction"
+          # 2. Extract to temp using 7z
+          7z x "aseprite_src.zip" -o"temp_ext"
           
-          # 3. Find the ACTUAL source root (where CMakeLists.txt lives)
-          $rootFile = Get-ChildItem -Path "temp_extraction" -Filter "CMakeLists.txt" -Recurse | Select-Object -First 1
-          if ($null -eq $rootFile) { throw "Could not find CMakeLists.txt in the extracted ZIP!" }
+          # 3. Locate the actual root (where CMakeLists.txt lives)
+          $rootFile = Get-ChildItem -Path "temp_ext" -Filter "CMakeLists.txt" -Recurse | Select-Object -First 1
+          if ($null -eq $rootFile) { throw "Could not find CMakeLists.txt in ZIP!" }
+          $srcDir = $rootFile.Directory.FullName
           
-          # 4. Move that directory to 'aseprite'
-          $actualSourceDir = $rootFile.Directory.FullName
+          # 4. Use Robocopy to stage the source (fixes path/locked file issues)
           mkdir aseprite
-          Move-Item -Path "$actualSourceDir\*" -Destination "aseprite" -Force
-          echo "[+] Moved source from $actualSourceDir to /aseprite"
+          robocopy "$srcDir" "aseprite" /E /MOVE /NFL /NDL /NJH /NJS /nc /ns /np
+          echo "[+] Source successfully staged in /aseprite"
 
       - name: Download & Extract Skia
         shell: powershell
@@ -65,9 +65,8 @@ jobs:
           $build = "$env:GITHUB_WORKSPACE\build"
           $skia = "$env:GITHUB_WORKSPACE\skia"
           
-          if (!(Test-Path "$src\CMakeLists.txt")) { 
-            throw "Source still not found at $src. Check logs for extraction errors." 
-          }
+          # Final sanity check
+          if (!(Test-Path "$src\CMakeLists.txt")) { throw "CRITICAL: CMakeLists.txt missing at $src" }
           
           mkdir $build -ErrorAction SilentlyContinue
           cd $build
@@ -109,7 +108,21 @@ jobs:
           $iss | Out-File -FilePath "aseprite.iss" -Encoding utf8
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" aseprite.iss
 
-      - name: Upload Artifact
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.ASE_VER }}
+          name: Aseprite ${{ env.ASE_VER }}
+          files: installer/*.exe
+          body: |
+            Automated build of Aseprite ${{ env.ASE_VER }}.
+            
+            **Note:** This is a personal build for individual use. 
+            Refer to the Aseprite EULA regarding redistribution.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact (Backup)
         uses: actions/upload-artifact@v4
         with:
           name: Aseprite-Installer-${{ env.ASE_VER }}
