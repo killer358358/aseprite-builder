@@ -44,26 +44,19 @@ jobs:
       - name: Initialize MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: CMake Configuration
+      - name: Run CMake
+        # We use a single line here to ensure GitHub Actions doesn't misinterpret line breaks
         run: |
           mkdir build
           cd build
-          cmake -G Ninja `
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
-            -DLAF_BACKEND=skia `
-            -DSKIA_DIR=../skia `
-            -DSKIA_LIBRARY_DIR=../skia/out/Release-x64 `
-            -DSKIA_LIBRARY=../skia/out/Release-x64/skia.lib `
-            -DENABLE_UPDATER=OFF `
-            -DVERSION_OVERRIDE=${{ env.ASE_VER }} `
-            ../aseprite
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLAF_BACKEND=skia -DSKIA_DIR=../skia -DSKIA_LIBRARY_DIR=../skia/out/Release-x64 -DSKIA_LIBRARY=../skia/out/Release-x64/skia.lib -DENABLE_UPDATER=OFF -DVERSION_OVERRIDE=${{ env.ASE_VER }} ../aseprite
 
       - name: Compile with Ninja
         run: |
           cd build
           ninja
 
-      - name: Package Installer
+      - name: Package Installer (Inno Setup)
         shell: powershell
         run: |
           $iss = @"
