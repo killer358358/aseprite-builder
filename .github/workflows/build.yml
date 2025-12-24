@@ -33,11 +33,20 @@ jobs:
       - name: Download & Extract Source
         shell: powershell
         run: |
+          # 1. Download
           Invoke-WebRequest -Uri ${{ env.DOWNLOAD_URL }} -OutFile "aseprite_src.zip"
-          7z x "aseprite_src.zip" -o"aseprite_temp"
-          $sub = (Get-ChildItem -Path "aseprite_temp" -Directory | Select-Object -First 1).FullName
+          
+          # 2. Extract to a temporary location
+          7z x "aseprite_src.zip" -o"temp_extraction"
+          
+          # 3. Find the nested folder (e.g., Aseprite-v1.3.12-Source)
+          $nestedFolder = Get-ChildItem -Path "temp_extraction" -Directory | Select-Object -First 1
+          if ($null -eq $nestedFolder) { throw "Could not find nested folder in ZIP" }
+          
+          # 4. Move contents to the final 'aseprite' folder
           mkdir aseprite
-          Move-Item -Path "$sub\*" -Destination "aseprite" -Force
+          Move-Item -Path "$($nestedFolder.FullName)\*" -Destination "aseprite" -Force
+          echo "[+] Successfully moved source to /aseprite"
 
       - name: Download & Extract Skia
         shell: powershell
@@ -51,12 +60,15 @@ jobs:
       - name: Run CMake Configuration
         shell: powershell
         run: |
-          # Use absolute paths to prevent CMake directory confusion
           $src = "$env:GITHUB_WORKSPACE\aseprite"
           $build = "$env:GITHUB_WORKSPACE\build"
           $skia = "$env:GITHUB_WORKSPACE\skia"
           
-          if (!(Test-Path "$src\CMakeLists.txt")) { throw "Source not found at $src" }
+          # Check if the file actually exists now
+          if (!(Test-Path "$src\CMakeLists.txt")) { 
+            ls $src # List directory to debug if it still fails
+            throw "Source still not found at $src" 
+          }
           
           mkdir $build -ErrorAction SilentlyContinue
           cd $build
