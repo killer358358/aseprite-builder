@@ -17,7 +17,7 @@ jobs:
       - name: Install Build Tools
         run: choco install cmake ninja innosetup
 
-      - name: Fetch Latest Release Metadata
+      - name: Fetch Latest Aseprite Metadata
         shell: powershell
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -25,10 +25,9 @@ jobs:
           $headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
           $resp = (Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri https://api.github.com/repos/aseprite/aseprite/releases/latest).Content | ConvertFrom-Json
           $asset = $resp.assets | Where-Object { $_.name -like "*Source.zip" } | Select-Object -First 1
-          if ($null -eq $asset) { throw "Could not find Source.zip asset" }
+          if ($null -eq $asset) { throw "Could not find Aseprite Source.zip" }
           echo "DOWNLOAD_URL=$($asset.browser_download_url)" >> $env:GITHUB_ENV
           echo "ASE_VER=$($resp.tag_name)" >> $env:GITHUB_ENV
-          echo "[+] Targeting Version: $($resp.tag_name)"
 
       - name: Download & Extract Source
         shell: powershell
@@ -36,22 +35,32 @@ jobs:
           Invoke-WebRequest -Uri ${{ env.DOWNLOAD_URL }} -OutFile "aseprite_src.zip"
           7z x "aseprite_src.zip" -o"temp_ext"
           $rootFile = Get-ChildItem -Path "temp_ext" -Filter "CMakeLists.txt" -Recurse | Select-Object -First 1
-          if ($null -eq $rootFile) { throw "Could not find CMakeLists.txt in ZIP!" }
+          if ($null -eq $rootFile) { throw "CMakeLists.txt not found!" }
+          
+          mkdir aseprite -Force
           $srcDir = $rootFile.Directory.FullName
-          mkdir aseprite
+          
+          # Robocopy fix: Exit codes 0-1 are success. 
+          # /E = Recursive, /MOVE = Move files, /NFL/NDL/NJH/NJS = Silent mode
           robocopy "$srcDir" "aseprite" /E /MOVE /NFL /NDL /NJH /NJS /nc /ns /np
-          echo "[+] Source successfully staged in /aseprite"
+          if ($LASTEXITCODE -gt 1) { throw "Robocopy failed with exit code $LASTEXITCODE" }
+          
+          # Validation Check
+          if (!(Test-Path "aseprite\CMakeLists.txt")) { throw "Validation Failed: aseprite folder is empty!" }
+          echo "[+] Source staged and validated in /aseprite"
 
-      - name: Download & Extract Skia
+      - name: Fetch & Extract Skia Binaries
         shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Create the directory first to prevent 7z errors
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
+          $skia_resp = (Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri https://api.github.com/repos/aseprite/skia/releases/latest).Content | ConvertFrom-Json
+          $skia_asset = $skia_resp.assets | Where-Object { $_.name -eq "Skia-Windows-Release-x64.zip" } | Select-Object -First 1
+          Invoke-WebRequest -Uri "$($skia_asset.browser_download_url)" -OutFile "skia.zip"
           mkdir skia -Force
-          echo "Downloading Skia binaries..."
-          Invoke-WebRequest -Uri "https://github.com/aseprite/skia/releases/latest/download/Skia-Windows-Release-x64.zip" -OutFile "skia.zip"
-          echo "Extracting Skia..."
           7z x "skia.zip" -o"skia" -y
-          echo "[+] Skia successfully staged in /skia"
+          echo "[+] Skia staged in /skia"
 
       - name: Initialize MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -62,10 +71,8 @@ jobs:
           $src = "$env:GITHUB_WORKSPACE\aseprite"
           $build = "$env:GITHUB_WORKSPACE\build"
           $skia = "$env:GITHUB_WORKSPACE\skia"
-          
-          mkdir $build -ErrorAction SilentlyContinue
+          mkdir $build -Force
           cd $build
-          
           cmake -G Ninja `
             -DCMAKE_BUILD_TYPE=RelWithDebInfo `
             -DLAF_BACKEND=skia `
@@ -112,6 +119,5 @@ jobs:
           files: installer/*.exe
           body: |
             Automated build of Aseprite ${{ env.ASE_VER }}.
-            **Note:** This is a personal build for individual use. 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
