@@ -50,9 +50,23 @@ jobs:
       - name: Run CMake Configuration
         shell: powershell
         run: |
-          mkdir build -Force
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLAF_BACKEND=skia -DSKIA_DIR="../skia" -DSKIA_LIBRARY_DIR="../skia/out/Release-x64" -DSKIA_LIBRARY="../skia/out/Release-x64/skia.lib" -DENABLE_UPDATER=OFF -DVERSION_OVERRIDE="${{ env.ASE_VER }}" "../aseprite"
+          # FORCING ABSOLUTE PATHS TO FIX INTERFACE_INCLUDE_DIRECTORIES ERROR
+          $abs_src = Join-Path $env:GITHUB_WORKSPACE "aseprite"
+          $abs_skia = Join-Path $env:GITHUB_WORKSPACE "skia"
+          $abs_build = Join-Path $env:GITHUB_WORKSPACE "build"
+          
+          mkdir $abs_build -Force
+          Set-Location $abs_build
+          
+          # We pass ONLY full absolute paths here. No ".." allowed.
+          cmake -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            -DLAF_BACKEND=skia `
+            -DSKIA_DIR="$abs_skia" `
+            -DSKIA_LIBRARY_DIR="$abs_skia\out\Release-x64" `
+            -DSKIA_LIBRARY="$abs_skia\out\Release-x64\skia.lib" `
+            -DENABLE_UPDATER=OFF `
+            "$abs_src"
 
       - name: Compile with Ninja
         run: |
@@ -62,8 +76,7 @@ jobs:
       - name: Package Installer (Inno Setup)
         shell: powershell
         run: |
-          # Use the absolute path to the bin folder
-          $binPath = "$env:GITHUB_WORKSPACE\build\bin"
+          $binPath = Join-Path $env:GITHUB_WORKSPACE "build\bin"
           $iss = @"
           [Setup]
           AppName=Aseprite
