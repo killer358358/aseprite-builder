@@ -32,22 +32,22 @@ jobs:
       - name: Download & Extract Source
         shell: powershell
         run: |
+          # 1. Download and Extract
           Invoke-WebRequest -Uri ${{ env.DOWNLOAD_URL }} -OutFile "aseprite_src.zip"
-          7z x "aseprite_src.zip" -o"temp_ext"
+          7z x "aseprite_src.zip" -o"temp_ext" -y
+          
+          # 2. Find the root folder containing CMakeLists.txt
           $rootFile = Get-ChildItem -Path "temp_ext" -Filter "CMakeLists.txt" -Recurse | Select-Object -First 1
           if ($null -eq $rootFile) { throw "CMakeLists.txt not found!" }
-          
-          mkdir aseprite -Force
           $srcDir = $rootFile.Directory.FullName
           
-          # Robocopy fix: Exit codes 0-1 are success. 
-          # /E = Recursive, /MOVE = Move files, /NFL/NDL/NJH/NJS = Silent mode
-          robocopy "$srcDir" "aseprite" /E /MOVE /NFL /NDL /NJH /NJS /nc /ns /np
-          if ($LASTEXITCODE -gt 1) { throw "Robocopy failed with exit code $LASTEXITCODE" }
+          # 3. Move items using a safer PowerShell-native approach
+          mkdir aseprite -Force
+          Get-ChildItem -Path "$srcDir\*" | Move-Item -Destination "aseprite" -Force
           
-          # Validation Check
-          if (!(Test-Path "aseprite\CMakeLists.txt")) { throw "Validation Failed: aseprite folder is empty!" }
-          echo "[+] Source staged and validated in /aseprite"
+          # 4. Final verification
+          if (!(Test-Path "aseprite\CMakeLists.txt")) { exit 1 }
+          Write-Host "[+] Source staged successfully."
 
       - name: Fetch & Extract Skia Binaries
         shell: powershell
@@ -60,7 +60,7 @@ jobs:
           Invoke-WebRequest -Uri "$($skia_asset.browser_download_url)" -OutFile "skia.zip"
           mkdir skia -Force
           7z x "skia.zip" -o"skia" -y
-          echo "[+] Skia staged in /skia"
+          Write-Host "[+] Skia staged."
 
       - name: Initialize MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
