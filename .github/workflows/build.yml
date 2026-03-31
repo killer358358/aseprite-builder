@@ -2,6 +2,10 @@ name: Build Aseprite
 on:
   workflow_dispatch:
 
+# Added this block to force all JavaScript actions to use Node 24 and silence the deprecation warning
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: windows-latest
