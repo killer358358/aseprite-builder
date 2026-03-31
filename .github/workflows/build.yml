@@ -2,7 +2,6 @@ name: Build Aseprite
 on:
   workflow_dispatch:
 
-# Added this block to force all JavaScript actions to use Node 24 and silence the deprecation warning
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -17,9 +16,6 @@ jobs:
 
       - name: Enable Long Paths
         run: git config --system core.longpaths true
-
-      - name: Install Build Tools
-        run: choco install cmake ninja innosetup
 
       - name: Fetch Latest Release Metadata
         shell: powershell
